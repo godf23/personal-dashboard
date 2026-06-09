@@ -1,10 +1,10 @@
 #!/usr/bin/env bash
 # Personal Dashboard — one-line installer
-# Usage: bash -c "$(curl -fsSL https://raw.githubusercontent.com/Racoon/personal-dashboard/main/install/dashboard.sh)"
+# Usage: bash -c "$(curl -fsSL https://raw.githubusercontent.com/godf23/personal-dashboard/main/install/dashboard.sh)"
 
 set -euo pipefail
 
-REPO="${DASHBOARD_REPO:-Racoon/personal-dashboard}"
+REPO="${DASHBOARD_REPO:-godf23/personal-dashboard}"
 BRANCH="${DASHBOARD_BRANCH:-main}"
 INSTALL_DIR="${DASHBOARD_DIR:-/opt/personal-dashboard}"
 SERVICE_NAME="personal-dashboard"

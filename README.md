@@ -14,7 +14,7 @@ A self-hosted personal dashboard with quantum weather, news feeds, and a sortabl
 One-liner (Debian/Ubuntu, Alpine, or RHEL/Fedora as root):
 
 ```bash
-bash -c "$(curl -fsSL https://raw.githubusercontent.com/Racoon/personal-dashboard/main/install/dashboard.sh)"
+bash -c "$(curl -fsSL https://raw.githubusercontent.com/godf23/personal-dashboard/main/install/dashboard.sh)"
 ```
 
 The installer will:
@@ -30,7 +30,7 @@ After install, edit `/opt/personal-dashboard/.env` with your API keys.
 ## Manual install
 
 ```bash
-git clone https://github.com/Racoon/personal-dashboard.git
+git clone https://github.com/godf23/personal-dashboard.git
 cd personal-dashboard
 python3 -m venv .venv
 source .venv/bin/activate   # Windows: .venv\Scripts\activate
