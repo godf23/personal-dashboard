@@ -71,7 +71,27 @@ Or:
 python scripts/push.py "describe your changes"
 ```
 
-Double-click `push.bat` on Windows (prompts for a commit message if none given).
+## CLI commands
+
+**In the dashboard** (bottom-right command bar, or press `` ` `` to focus):
+
+| Command | Action |
+|---------|--------|
+| `/help` | List commands |
+| `/version` | Show build version |
+| `/update` | Pull latest code from GitHub |
+| `/restart` | Restart the dashboard |
+
+**Terminal** (`start.py`):
+
+```bash
+python start.py              # run server (default)
+python start.py version      # show build 0.1
+python start.py update       # pull latest from GitHub
+python start.py restart      # restart systemd service (Linux install)
+```
+
+Version metadata lives in `app/version.py` — bump `__build__` when you ship.
 
 ## Service management
 
