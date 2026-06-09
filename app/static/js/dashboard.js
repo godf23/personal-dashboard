@@ -549,7 +549,6 @@ async function init() {
   initMouseBackground();
   initNewsPreview();
   initUpdateChecker();
-  initCli();
   await loadSettings();
   await Promise.all([loadWeather(), loadNews(), loadLinks()]);
   setInterval(loadWeather, 600000);
@@ -635,60 +634,6 @@ function initUpdateChecker() {
   });
   checkForUpdates();
   setInterval(checkForUpdates, UPDATE_POLL_MS);
-}
-
-function initCli() {
-  const form = $("#cli-form");
-  const input = $("#cli-input");
-  const output = $("#cli-output");
-  const toggle = $("#cli-toggle-output");
-  if (!form || !input) return;
-
-  const setOutput = (text, kind = "ok") => {
-    if (!output) return;
-    output.textContent = text;
-    output.classList.remove("hidden", "ok", "err");
-    output.classList.add(kind);
-  };
-
-  toggle?.addEventListener("click", () => {
-    output?.classList.toggle("hidden");
-  });
-
-  form.addEventListener("submit", async (e) => {
-    e.preventDefault();
-    const raw = input.value.trim();
-    if (!raw) return;
-    const cmd = raw.startsWith("/") ? raw : `/${raw}`;
-    setOutput(`> ${cmd}`, "ok");
-    input.value = "";
-    try {
-      const result = await api("/api/cli", {
-        method: "POST",
-        body: JSON.stringify({ command: cmd }),
-      });
-      setOutput(result.output || "Done.", "ok");
-      if (result.restarting) {
-        setTimeout(() => location.reload(), 3500);
-      }
-    } catch (err) {
-      setOutput(err.message || "Command failed", "err");
-    }
-  });
-
-  api("/api/cli/version").then((info) => {
-    const el = $("#cli-build");
-    if (el && info.build) el.textContent = `build ${info.build}`;
-  }).catch(() => {});
-
-  document.addEventListener("keydown", (e) => {
-    if (e.key === "`" && !e.ctrlKey && !e.metaKey && !e.altKey) {
-      const tag = document.activeElement?.tagName;
-      if (tag === "INPUT" || tag === "TEXTAREA" || tag === "SELECT") return;
-      e.preventDefault();
-      input.focus();
-    }
-  });
 }
 
 function initMouseBackground() {

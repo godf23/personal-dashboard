@@ -1,7 +1,6 @@
 #!/usr/bin/env python3
 """Start the personal dashboard for local use or playit.gg tunneling."""
 
-import argparse
 import os
 import socket
 import sys
@@ -9,6 +8,7 @@ import sys
 import uvicorn
 
 from app.config import BASE_DIR, get_settings
+from app.services.restart import clear_pid, write_pid
 from app.version import __build__, __version__
 
 DEFAULT_PORTS = (443, 80, 8080)
@@ -63,6 +63,7 @@ def run_server():
     else:
         scheme = "http"
 
+    write_pid()
     print(f"Personal Dashboard build {__build__} (v{__version__})")
     print(f"Dashboard running at {scheme}://127.0.0.1:{port}")
     print(
@@ -82,72 +83,13 @@ def run_server():
             uvicorn.run(**kwargs)
         else:
             raise
-
-
-def cmd_update():
-    from app.services.updater import apply_update_sync, check_for_update
-    import asyncio
-
-    settings = get_settings()
-    print(f"Checking for updates ({settings.github_repo}@{settings.github_branch})…")
-    status = asyncio.run(
-        check_for_update(settings.github_repo, settings.github_branch, force=True)
-    )
-    if not status.get("updates_supported"):
-        print(status.get("error") or "Updates not supported", file=sys.stderr)
-        sys.exit(1)
-    if not status.get("update_available"):
-        print("Already on the latest build.")
-        return
-    result = apply_update_sync(settings.github_branch)
-    if not result.get("ok"):
-        print(result.get("error", "Update failed"), file=sys.stderr)
-        sys.exit(1)
-    print(f"Updated to {result.get('local_short_sha', 'latest')}.")
-    if result.get("restarted"):
-        print("Service restarted.")
-    elif result.get("restart_required"):
-        print("Run: python start.py restart")
-
-
-def cmd_restart():
-    from app.services.restart import restart_from_cli
-
-    result = restart_from_cli()
-    if not result.get("ok"):
-        print(result.get("error", "Restart failed"), file=sys.stderr)
-        sys.exit(1)
-    print(result.get("message", "Restarted."))
-
-
-def cmd_version():
-    from app.services.updater import get_local_short_commit
-
-    commit = get_local_short_commit()
-    suffix = f" [{commit}]" if commit else ""
-    print(f"Personal Dashboard  build {__build__}  (v{__version__}){suffix}")
+    finally:
+        clear_pid()
 
 
 def main():
-    parser = argparse.ArgumentParser(description="Personal Dashboard")
-    parser.add_argument(
-        "command",
-        nargs="?",
-        default="run",
-        choices=("run", "update", "restart", "version"),
-        help="run (default), update, restart, or version",
-    )
-    args = parser.parse_args()
     os.chdir(BASE_DIR)
-
-    if args.command == "run":
-        run_server()
-    elif args.command == "update":
-        cmd_update()
-    elif args.command == "restart":
-        cmd_restart()
-    elif args.command == "version":
-        cmd_version()
+    run_server()
 
 
 if __name__ == "__main__":

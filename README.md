@@ -71,25 +71,25 @@ Or:
 python scripts/push.py "describe your changes"
 ```
 
-## CLI commands
+## CLI commands (terminal)
 
-**In the dashboard** (bottom-right command bar, or press `` ` `` to focus):
+```powershell
+.\dash.ps1 /help
+.\dash.ps1 /version
+.\dash.ps1 /update
+.\dash.ps1 /restart
+.\dash.ps1 run
+```
+
+Or `python dash.py /update`, `python dash.py /restart`, etc.
 
 | Command | Action |
 |---------|--------|
 | `/help` | List commands |
-| `/version` | Show build version |
-| `/update` | Pull latest code from GitHub |
-| `/restart` | Restart the dashboard |
-
-**Terminal** (`start.py`):
-
-```bash
-python start.py              # run server (default)
-python start.py version      # show build 0.1
-python start.py update       # pull latest from GitHub
-python start.py restart      # restart systemd service (Linux install)
-```
+| `/version` | Show build 0.1 |
+| `/update` | Pull latest from GitHub |
+| `/restart` | Restart the running dashboard |
+| `run` | Start the server (`start.py` also works) |
 
 Version metadata lives in `app/version.py` — bump `__build__` when you ship.
 

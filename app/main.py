@@ -9,7 +9,7 @@ from fastapi.templating import Jinja2Templates
 
 from app.config import ENV_EXAMPLE_PATH, ENV_PATH, reload_settings
 from app.database import init_db
-from app.routes import cli, links, news, settings, status, updates, weather
+from app.routes import links, news, settings, status, updates, weather
 from app.version import __build__, __version__
 
 BASE_DIR = Path(__file__).resolve().parent
@@ -60,7 +60,6 @@ app.include_router(news.router)
 app.include_router(settings.router)
 app.include_router(status.router)
 app.include_router(updates.router)
-app.include_router(cli.router)
 
 
 @app.get("/", response_class=HTMLResponse)
