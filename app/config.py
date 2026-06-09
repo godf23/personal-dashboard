@@ -23,6 +23,8 @@ class Settings(BaseSettings):
     owm_api_key: str = ""
     wapi_api_key: str = ""
     news_api_token: str = ""
+    github_repo: str = "godf23/personal-dashboard"
+    github_branch: str = "main"
     proxmox_host: str = ""
     proxmox_node: str = ""
     proxmox_token_id: str = ""

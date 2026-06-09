@@ -49,6 +49,29 @@ Open `http://127.0.0.1:8080` (or `:443` / `:80` if available and you have SSL ce
 | `WAPI_API_KEY` | WeatherAPI.com key |
 | `NEWS_API_TOKEN` | [The News API](https://www.thenewsapi.com/) token |
 | `SSL_CERT` / `SSL_KEY` | Optional paths to TLS cert/key for HTTPS |
+| `GITHUB_REPO` | GitHub repo for auto-updates (default: `godf23/personal-dashboard`) |
+| `GITHUB_BRANCH` | Branch to track (default: `main`) |
+
+## Auto-updates
+
+When the dashboard runs from a git clone, it checks GitHub every 5 minutes. If you've pushed newer code, a prompt appears in the **bottom-left** with **Update now** / **Later**.
+
+- **Linux (systemd install):** pulls latest code, refreshes dependencies, and restarts the service
+- **Local dev:** pulls latest code; restart `start.py` when prompted
+
+## Push to GitHub
+
+```powershell
+.\push.ps1 "describe your changes"
+```
+
+Or:
+
+```bash
+python scripts/push.py "describe your changes"
+```
+
+Double-click `push.bat` on Windows (prompts for a commit message if none given).
 
 ## Service management
 

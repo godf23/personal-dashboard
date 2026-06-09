@@ -1,3 +1,5 @@
+import time
+
 from fastapi import APIRouter, HTTPException, Query
 from pydantic import BaseModel
 
@@ -7,6 +9,13 @@ from app.services.news import fetch_news_for_location
 from app.services.preview import fetch_page_preview
 
 router = APIRouter(prefix="/api/news", tags=["news"])
+
+_news_cache: dict[str, tuple[float, list[dict]]] = {}
+NEWS_CACHE_TTL = 5 * 60 * 60  # 5 hours
+
+
+def _cache_key(label: str, token: str) -> str:
+    return f"{label}:{token[:8]}"
 
 
 class LocationCreate(BaseModel):
@@ -51,16 +60,34 @@ def add_news_location(body: LocationCreate):
 @router.delete("/locations/{location_id}")
 def delete_news_location(location_id: int):
     with get_db() as conn:
+        row = conn.execute(
+            "SELECT label FROM news_locations WHERE id = ?", (location_id,)
+        ).fetchone()
         cur = conn.execute(
             "DELETE FROM news_locations WHERE id = ?", (location_id,)
         )
         if cur.rowcount == 0:
             raise HTTPException(404, "Location not found")
+    if row:
+        settings = get_settings()
+        _news_cache.pop(_cache_key(row["label"], settings.news_api_token), None)
     return {"ok": True}
 
 
+async def _news_for_location(label: str, token: str, *, refresh: bool = False) -> list[dict]:
+    key = _cache_key(label, token)
+    now = time.time()
+    if not refresh and key in _news_cache:
+        cached_at, articles = _news_cache[key]
+        if now - cached_at < NEWS_CACHE_TTL:
+            return articles
+    articles = await fetch_news_for_location(label, token)
+    _news_cache[key] = (now, articles)
+    return articles
+
+
 @router.get("")
-async def get_all_news():
+async def get_all_news(refresh: bool = False):
     settings = get_settings()
     if not settings.news_configured:
         rows = _get_locations()
@@ -72,13 +99,15 @@ async def get_all_news():
     results = []
     for row in rows:
         try:
-            articles = await fetch_news_for_location(
-                row["label"], settings.news_api_token
+            articles = await _news_for_location(
+                row["label"], settings.news_api_token, refresh=refresh
             )
+            cached_at = _news_cache.get(_cache_key(row["label"], settings.news_api_token), (0,))[0]
             results.append({
                 "id": row["id"],
                 "label": row["label"],
                 "articles": articles,
+                "cached": not refresh and (time.time() - cached_at) < NEWS_CACHE_TTL,
             })
         except Exception as e:
             results.append({

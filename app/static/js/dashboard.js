@@ -273,9 +273,10 @@ async function loadWeather() {
   }
 }
 
-async function loadNews() {
+async function loadNews(refresh = false) {
   try {
-    newsData = await api("/api/news");
+    const q = refresh ? "?refresh=true" : "";
+    newsData = await api(`/api/news${q}`);
     renderAllNews();
   } catch (e) {
     const msg = `<p class="error-text">${escapeHtml(e.message)}</p>`;
@@ -314,7 +315,7 @@ async function addLocation(type, label) {
   await api(path, { method: "POST", body: JSON.stringify({ label }) });
   await loadSettingsLocs();
   if (type === "weather") await loadWeather();
-  else await loadNews();
+  else await loadNews(true);
 }
 
 async function removeLocation(type, id) {
@@ -322,7 +323,7 @@ async function removeLocation(type, id) {
   await api(path, { method: "DELETE" });
   await loadSettingsLocs();
   if (type === "weather") await loadWeather();
-  else await loadNews();
+  else await loadNews(true);
 }
 
 function openDrawer() {
@@ -542,13 +543,97 @@ document.addEventListener("click", async (e) => {
   }
 });
 
+const NEWS_REFRESH_MS = 5 * 60 * 60 * 1000; // 5 hours
+
 async function init() {
   initMouseBackground();
   initNewsPreview();
+  initUpdateChecker();
   await loadSettings();
   await Promise.all([loadWeather(), loadNews(), loadLinks()]);
   setInterval(loadWeather, 600000);
-  setInterval(loadNews, 300000);
+  setInterval(() => loadNews(false), NEWS_REFRESH_MS);
+}
+
+const UPDATE_POLL_MS = 300000;
+let updateApplying = false;
+
+function dismissUpdate(sha) {
+  if (sha) sessionStorage.setItem("dismissedUpdate", sha);
+  $("#update-toast")?.classList.add("hidden");
+}
+
+function showUpdateToast(status) {
+  const toast = $("#update-toast");
+  const msg = $("#update-toast-msg");
+  if (!toast || !msg || !status.update_available) return;
+  if (sessionStorage.getItem("dismissedUpdate") === status.remote_sha) return;
+
+  const local = status.local_short_sha || "local";
+  const remote = status.remote_short_sha || "new";
+  const text = status.message
+    ? `${status.message} (${local} → ${remote})`
+    : `Version ${local} → ${remote}`;
+  msg.textContent = text;
+  toast.classList.remove("hidden");
+}
+
+async function checkForUpdates() {
+  if (updateApplying) return;
+  try {
+    const status = await api("/api/updates/check");
+    if (status.update_available) {
+      showUpdateToast(status);
+    } else {
+      $("#update-toast")?.classList.add("hidden");
+    }
+  } catch {
+    /* ignore */
+  }
+}
+
+async function applyUpdate() {
+  if (updateApplying) return;
+  const toast = $("#update-toast");
+  const msg = $("#update-toast-msg");
+  updateApplying = true;
+  toast?.classList.add("updating");
+  if (msg) msg.textContent = "Downloading update…";
+
+  try {
+    const result = await api("/api/updates/apply", { method: "POST" });
+    if (result.restarted) {
+      if (msg) msg.textContent = "Updated — restarting…";
+      setTimeout(() => location.reload(), 4000);
+      return;
+    }
+    if (result.restart_required) {
+      if (msg) msg.textContent = "Updated. Restart start.py to finish.";
+      toast?.classList.remove("updating");
+      updateApplying = false;
+      return;
+    }
+    if (msg) msg.textContent = result.message || "Already up to date.";
+    toast?.classList.add("hidden");
+  } catch (e) {
+    if (msg) msg.textContent = e.message || "Update failed";
+    toast?.classList.remove("updating");
+  }
+  updateApplying = false;
+}
+
+function initUpdateChecker() {
+  $("#update-apply-btn")?.addEventListener("click", applyUpdate);
+  $("#update-dismiss-btn")?.addEventListener("click", async () => {
+    try {
+      const status = await api("/api/updates/check");
+      dismissUpdate(status.remote_sha);
+    } catch {
+      $("#update-toast")?.classList.add("hidden");
+    }
+  });
+  checkForUpdates();
+  setInterval(checkForUpdates, UPDATE_POLL_MS);
 }
 
 function initMouseBackground() {
