@@ -5,7 +5,7 @@ from pydantic import BaseModel
 
 from app.config import get_settings
 from app.database import _utcnow, get_db
-from app.services.news import NewsRateLimitError, fetch_news_for_location
+from app.services.news import NewsPlanLimitError, NewsRateLimitError, fetch_news_for_location
 from app.services.preview import fetch_page_preview
 
 router = APIRouter(prefix="/api/news", tags=["news"])
@@ -117,7 +117,7 @@ async def get_all_news(refresh: bool = False):
             if token_index is not None and token_index > 0:
                 entry["api_key_index"] = token_index + 1
             results.append(entry)
-        except NewsRateLimitError as e:
+        except (NewsRateLimitError, NewsPlanLimitError) as e:
             results.append({
                 "id": row["id"],
                 "label": row["label"],
