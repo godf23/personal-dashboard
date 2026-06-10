@@ -77,6 +77,67 @@ function weatherFxHtml(mood) {
   return `<div class="wx-fx"></div>`;
 }
 
+function fmtStat(value, suffix = "") {
+  if (value == null || value === "") return "—";
+  return `${value}${suffix}`;
+}
+
+function weatherStat(label, value) {
+  return `<div class="weather-detail-stat"><label>${escapeHtml(label)}</label><span>${escapeHtml(String(value))}</span></div>`;
+}
+
+function renderWeatherDetailHtml(w) {
+  const icon = w.icon_key || "unknown";
+  const pollenParts = [];
+  if (w.pollen_summary) pollenParts.push(`Overall: ${w.pollen_summary}`);
+  if (w.grass_pollen != null) pollenParts.push(`Grass: ${w.grass_pollen}`);
+  if (w.tree_pollen != null) pollenParts.push(`Tree: ${w.tree_pollen}`);
+  if (w.weed_pollen != null) pollenParts.push(`Weed: ${w.weed_pollen}`);
+  const pollen = pollenParts.length ? pollenParts.join(" · ") : "Not available for this area";
+
+  const stats = [
+    weatherStat("Feels like", fmtStat(w.feels_like_f, "°F")),
+    weatherStat("Humidity", fmtStat(w.humidity_pct, "%")),
+    weatherStat("Rain chance", fmtStat(w.rain_chance_pct, "%")),
+    weatherStat("Wind", w.wind_mph != null ? `${w.wind_mph} mph` : "—"),
+    weatherStat("Wind dir", fmtStat(w.wind_direction)),
+    weatherStat("Pressure", w.pressure_hpa != null ? `${w.pressure_hpa} hPa` : "—"),
+    weatherStat("Dew point", fmtStat(w.dew_point_f, "°F")),
+    weatherStat("UV index", fmtStat(w.uv_index_max ?? w.uv_index)),
+    weatherStat("Cloud cover", fmtStat(w.cloud_cover_pct, "%")),
+    weatherStat("Sunrise", fmtStat(w.sunrise)),
+    weatherStat("Sunset", fmtStat(w.sunset)),
+    weatherStat("Pollen", pollen),
+  ].join("");
+
+  return `
+    <div class="weather-detail-hero">
+      <img class="icon-weather" src="${iconUrl("weather", icon)}" alt="" width="48" height="48">
+      <div>
+        <div class="weather-detail-temp">${w.temperature_f}°F</div>
+        <div class="weather-uncertainty">±${w.uncertainty_f}°F · ${escapeHtml(w.summary)}</div>
+      </div>
+    </div>
+    <div class="weather-detail-grid">${stats}</div>
+    <div class="weather-detail-section">
+      <h4>7-day forecast</h4>
+      ${renderForecast(w.forecast_7day, false)}
+    </div>
+    <div class="weather-footer">${w.active_sources}/${w.total_sources} sources${w.cached ? " (cached)" : ""}</div>
+  `;
+}
+
+function openWeatherDetail(w) {
+  if (!w || w.error) return;
+  const modal = $("#weather-detail-modal");
+  const title = $("#weather-detail-title");
+  const body = $("#weather-detail-body");
+  if (!modal || !title || !body) return;
+  title.textContent = w.location;
+  body.innerHTML = renderWeatherDetailHtml(w);
+  modal.showModal();
+}
+
 function renderForecast(days, compact) {
   if (!days?.length) return "";
   const cls = compact ? "forecast-strip compact" : "forecast-strip";
@@ -141,8 +202,11 @@ function renderWeatherTo(gridSel, items, expanded) {
     const wind = w.wind_mph != null
       ? `<span><img class="icon-ui" src="${iconUrl("ui", "wind")}" alt="" width="14" height="14">${w.wind_mph} mph</span>`
       : "";
-    const forecast = renderForecast(w.forecast_7day, !expanded);
-    return `<div class="weather-card ${mood}" data-id="${w.id}">
+    const forecast = expanded ? renderForecast(w.forecast_7day, false) : "";
+    const tapHint = expanded ? "" : '<div class="weather-tap-hint">Click for full details</div>';
+    const clickCls = " weather-card-clickable";
+    const detailAttr = ` data-weather-id="${w.id}"`;
+    return `<div class="weather-card ${mood}${clickCls}" data-id="${w.id}"${detailAttr}>
       ${weatherFxHtml(mood)}
       <button class="icon-btn card-remove" data-remove-weather="${w.id}" type="button">
         <img class="icon-ui" src="${iconUrl("ui", "close")}" alt="" width="16" height="16">
@@ -161,7 +225,8 @@ function renderWeatherTo(gridSel, items, expanded) {
           ${wind}
         </div>
         ${forecast}
-        <div class="weather-footer">${w.active_sources}/${w.total_sources} sources${w.cached ? " (cached)" : ""}</div>
+        ${tapHint}
+        ${expanded ? `<div class="weather-footer">${w.active_sources}/${w.total_sources} sources${w.cached ? " (cached)" : ""}</div>` : ""}
       </div>
     </div>`;
   }).join("");
@@ -209,17 +274,17 @@ function renderLinksTo(gridSel, links) {
   }
   grid.innerHTML = links.map((l) => {
     const favicon = l.icon_url || iconUrl("ui", "external-link");
-    return `<div class="link-card" data-id="${l.id}">
-      <button class="icon-btn link-delete" data-delete-link="${l.id}" type="button">
+    return `<div class="link-card" data-id="${l.id}" data-open-link="${l.id}" data-url="${escapeHtml(l.url)}" role="link" tabindex="0">
+      <button class="icon-btn link-delete" data-delete-link="${l.id}" type="button" aria-label="Delete link">
         <img class="icon-ui" src="${iconUrl("ui", "close")}" alt="" width="14" height="14">
       </button>
-      <a href="#" class="link-card-hit" data-open-link="${l.id}" data-url="${escapeHtml(l.url)}">
-        <span class="link-title-row">
+      <div class="link-card-body">
+        <div class="link-title-row">
           <img class="link-favicon" src="${escapeHtml(favicon)}" alt="" width="20" height="20" loading="lazy">
           <span>${escapeHtml(l.title)}</span>
-        </span>
-        <span class="link-meta">${l.click_count} clicks</span>
-      </a>
+        </div>
+        <div class="link-meta">${l.click_count} clicks</div>
+      </div>
     </div>`;
   }).join("");
 }
@@ -435,9 +500,8 @@ function initNewsPreview() {
   });
 }
 
-$("#weather-section")?.addEventListener("click", (e) => {
-  if (e.target.closest("button, .icon-btn")) return;
-  showView("weather");
+$("#close-weather-detail")?.addEventListener("click", () => {
+  $("#weather-detail-modal")?.close();
 });
 
 $("#menu-btn").addEventListener("click", openDrawer);
@@ -522,14 +586,27 @@ function bindSortSelect(sel) {
 bindSortSelect("#sort-select");
 bindSortSelect("#sort-select-full");
 
+async function openLinkCard(card) {
+  const id = card.dataset.openLink;
+  if (!id) return;
+  const { url } = await api(`/api/links/${id}/click`, { method: "POST" });
+  window.open(url, "_blank");
+  await loadLinks();
+}
+
 document.addEventListener("click", async (e) => {
-  const openBtn = e.target.closest("[data-open-link]");
-  if (openBtn) {
+  const weatherCard = e.target.closest("[data-weather-id]");
+  if (weatherCard && !e.target.closest("button, .icon-btn")) {
+    const id = Number(weatherCard.dataset.weatherId);
+    const w = weatherData.find((item) => item.id === id);
+    if (w) openWeatherDetail(w);
+    return;
+  }
+
+  const openCard = e.target.closest(".link-card[data-open-link]");
+  if (openCard && !e.target.closest("[data-delete-link]")) {
     e.preventDefault();
-    const id = openBtn.dataset.openLink;
-    const { url } = await api(`/api/links/${id}/click`, { method: "POST" });
-    window.open(url, "_blank");
-    await loadLinks();
+    await openLinkCard(openCard);
     return;
   }
 
@@ -550,6 +627,14 @@ document.addEventListener("click", async (e) => {
   if (rmNews) {
     await removeLocation("news", rmNews.dataset.removeNews);
   }
+});
+
+document.addEventListener("keydown", async (e) => {
+  if (e.key !== "Enter" && e.key !== " ") return;
+  const card = e.target.closest(".link-card[data-open-link]");
+  if (!card || e.target.closest("[data-delete-link]")) return;
+  e.preventDefault();
+  await openLinkCard(card);
 });
 
 const NEWS_REFRESH_MS = 5 * 60 * 60 * 1000; // 5 hours

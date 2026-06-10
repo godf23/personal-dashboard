@@ -8,7 +8,7 @@ from pydantic import BaseModel
 from app.config import get_settings
 from app.database import _utcnow, get_db
 from app.services.geocoding import geocode_location
-from app.services.forecast import fetch_7day_forecast
+from app.services.forecast import fetch_weather_bundle
 from app.services.quantum_weather import get_weather
 
 router = APIRouter(prefix="/api/weather", tags=["weather"])
@@ -103,7 +103,8 @@ async def get_all_weather():
             if now - cached_at < CACHE_TTL:
                 lat, lon = row["lat"], row["lon"]
                 if lat is not None and lon is not None and not data.get("forecast_7day"):
-                    data = {**data, "forecast_7day": await fetch_7day_forecast(lat, lon)}
+                    bundle = await fetch_weather_bundle(lat, lon)
+                    data = {**data, **bundle}
                     _cache[loc_id] = (cached_at, data)
                 return {**data, "id": loc_id, "location": row["label"], "cached": True}
 
@@ -136,14 +137,14 @@ async def get_all_weather():
                 "lon": lon,
                 "error": "No valid weather sources",
             }
-        forecast = await fetch_7day_forecast(lat, lon)
+        bundle = await fetch_weather_bundle(lat, lon)
         payload = {
             **data,
+            **bundle,
             "id": loc_id,
             "location": row["label"],
             "lat": lat,
             "lon": lon,
-            "forecast_7day": forecast,
             "cached": False,
         }
         _cache[loc_id] = (now, payload)

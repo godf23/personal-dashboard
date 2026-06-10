@@ -3,11 +3,13 @@
 
 from __future__ import annotations
 
+import re
 import subprocess
 import sys
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parent.parent
+VERSION_FILE = ROOT / "app" / "version.py"
 REMOTE = "origin"
 BRANCH = "main"
 DEFAULT_GIT_NAME = "godf23"
@@ -56,6 +58,19 @@ def git_identity_env() -> dict | None:
     return env
 
 
+def bump_version() -> str:
+    sys.path.insert(0, str(ROOT))
+    from app.version import __build__, bump_build
+
+    new_build = bump_build(__build__)
+    text = VERSION_FILE.read_text(encoding="utf-8")
+    text = re.sub(r'__version__ = "[^"]+"', f'__version__ = "{new_build}"', text, count=1)
+    text = re.sub(r'__build__ = "[^"]+"', f'__build__ = "{new_build}"', text, count=1)
+    VERSION_FILE.write_text(text, encoding="utf-8")
+    print(f"Bumped version to {new_build}")
+    return new_build
+
+
 def has_changes() -> bool:
     result = subprocess.run(
         ["git", "status", "--porcelain"],
@@ -79,11 +94,15 @@ def main() -> None:
         print("Error: not a git repository.")
         sys.exit(1)
 
+    new_build = bump_version()
+
     if has_changes():
         run(["git", "add", "-A"])
         run(["git", "commit", "-m", message], env=git_identity_env())
     else:
-        print("No local changes to commit.")
+        print("No local changes to commit (version file already staged).")
+
+    print(f"Release build: {new_build}")
 
     run(["git", "push", "-u", REMOTE, BRANCH])
     print()
