@@ -110,8 +110,10 @@ function formatNewsArticle(a, expanded) {
     data-source="${escapeHtml(a.source || "")}"
     data-desc="${desc}"
     data-image="${img}">
-    <a href="${escapeHtml(a.url)}" target="_blank" rel="noopener">${escapeHtml(a.title)}</a>
-    <div class="news-source">${source}</div>
+    <a href="${escapeHtml(a.url)}" target="_blank" rel="noopener">
+      <span class="news-headline">${escapeHtml(a.title)}</span>
+      <div class="news-source">${source}</div>
+    </a>
   </${tag}>`;
 }
 
@@ -211,11 +213,13 @@ function renderLinksTo(gridSel, links) {
       <button class="icon-btn link-delete" data-delete-link="${l.id}" type="button">
         <img class="icon-ui" src="${iconUrl("ui", "close")}" alt="" width="14" height="14">
       </button>
-      <a href="#" data-open-link="${l.id}" data-url="${escapeHtml(l.url)}">
-        <img class="link-favicon" src="${escapeHtml(favicon)}" alt="" width="20" height="20" loading="lazy">
-        ${escapeHtml(l.title)}
+      <a href="#" class="link-card-hit" data-open-link="${l.id}" data-url="${escapeHtml(l.url)}">
+        <span class="link-title-row">
+          <img class="link-favicon" src="${escapeHtml(favicon)}" alt="" width="20" height="20" loading="lazy">
+          <span>${escapeHtml(l.title)}</span>
+        </span>
+        <span class="link-meta">${l.click_count} clicks</span>
       </a>
-      <div class="link-meta">${l.click_count} clicks</div>
     </div>`;
   }).join("");
 }
@@ -430,6 +434,11 @@ function initNewsPreview() {
     }
   });
 }
+
+$("#weather-section")?.addEventListener("click", (e) => {
+  if (e.target.closest("button, .icon-btn")) return;
+  showView("weather");
+});
 
 $("#menu-btn").addEventListener("click", openDrawer);
 $("#close-settings").addEventListener("click", closeDrawer);

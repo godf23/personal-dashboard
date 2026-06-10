@@ -8,6 +8,7 @@ Usage:
   python dash.py /update
   python dash.py /restart
   python dash.py /debug
+  python dash.py /logs
   python dash.py run          # start the server
 """
 
@@ -29,6 +30,7 @@ COMMANDS = {
     "/update": "Pull latest code from GitHub",
     "/restart": "Restart the dashboard",
     "/debug": "Live debug console (playit-style logs)",
+    "/logs": "Export logs to logs/<date-time>/ by category",
     "run": "Start the dashboard server",
 }
 
@@ -43,8 +45,10 @@ def _normalize_cmd(raw: str) -> str:
         return "/update"
     if cmd in ("restart", "/restart"):
         return "/restart"
-    if cmd in ("debug", "/debug", "logs", "/logs"):
+    if cmd in ("debug", "/debug"):
         return "/debug"
+    if cmd in ("logs", "/logs", "export-logs", "/export-logs"):
+        return "/logs"
     if cmd in ("run", "/run", "start", "/start"):
         return "run"
     return cmd
@@ -57,6 +61,8 @@ def cmd_help():
     print("\nExamples:")
     print("  python dash.py /update")
     print("  python dash.py /restart")
+    print("  python dash.py /debug")
+    print("  python dash.py /logs")
     print("  python dash.py run")
 
 
@@ -108,6 +114,12 @@ def cmd_debug():
     run_debug_tui()
 
 
+def cmd_logs():
+    from app.services.log_export import export_logs
+
+    export_logs()
+
+
 def cmd_run():
     from start import run_server
 
@@ -134,6 +146,8 @@ def main():
         cmd_restart()
     elif cmd == "/debug":
         cmd_debug()
+    elif cmd == "/logs":
+        cmd_logs()
     elif cmd == "run":
         cmd_run()
     else:

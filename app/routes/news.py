@@ -15,7 +15,7 @@ NEWS_CACHE_TTL = 5 * 60 * 60  # 5 hours
 
 
 def _cache_key(label: str, token: str) -> str:
-    return f"{label}:{token[:8]}"
+    return f"v2:{label}:{token[:8]}"
 
 
 class LocationCreate(BaseModel):

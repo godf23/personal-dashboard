@@ -91,6 +91,7 @@ Or `python dash.py /update`, `python dash.py /restart`, etc.
 | `/update` | Pull latest from GitHub |
 | `/restart` | Restart the running dashboard |
 | `/debug` | Live debug console (boxed logs, press q to quit) |
+| `/logs` | Export logs to `logs/<date-time>/` split by category |
 | `run` | Start the server (`start.py` also works) |
 
 Version metadata lives in `app/version.py` — bump `__build__` when you ship.
