@@ -77,7 +77,18 @@ get_ip() {
   echo "$ip"
 }
 
+# git/rm break if the shell cwd is inside a directory we delete
+leave_install_dir() {
+  if [[ -n "${PWD:-}" ]] && [[ "$PWD" == "$INSTALL_DIR"/* || "$PWD" == "$INSTALL_DIR" ]]; then
+    cd / || cd /root || cd /tmp
+    msg_info "Left install directory before continuing"
+  fi
+}
+
 clone_or_update() {
+  leave_install_dir
+  cd / || cd /tmp
+
   if [[ -d "$INSTALL_DIR/.git" ]]; then
     msg_info "Updating existing install in $INSTALL_DIR"
     git -C "$INSTALL_DIR" fetch origin "$BRANCH"
@@ -150,6 +161,8 @@ uninstall() {
   systemctl disable --now "$SERVICE_NAME" 2>/dev/null || true
   rm -f "/etc/systemd/system/${SERVICE_NAME}.service"
   systemctl daemon-reload 2>/dev/null || true
+  leave_install_dir
+  cd / || cd /tmp
   rm -rf "$INSTALL_DIR"
   msg_ok "Uninstalled"
   exit 0
@@ -188,6 +201,10 @@ main() {
   if [[ ! "${confirm,,}" =~ ^(y|yes)$ ]]; then
     echo "Aborted."
     exit 0
+  fi
+
+  if [[ -n "${PWD:-}" ]] && [[ "$PWD" == "$INSTALL_DIR"/* || "$PWD" == "$INSTALL_DIR" ]]; then
+    echo -e "${YW}Note: run installs from outside ${INSTALL_DIR} (e.g. cd /root first)${CL}"
   fi
 
   install_deps
