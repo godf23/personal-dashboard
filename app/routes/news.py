@@ -5,7 +5,7 @@ from pydantic import BaseModel
 
 from app.config import get_settings
 from app.database import _utcnow, get_db
-from app.services.news import fetch_news_for_location
+from app.services.news import NewsRateLimitError, fetch_news_for_location
 from app.services.preview import fetch_page_preview
 
 router = APIRouter(prefix="/api/news", tags=["news"])
@@ -14,8 +14,8 @@ _news_cache: dict[str, tuple[float, list[dict]]] = {}
 NEWS_CACHE_TTL = 5 * 60 * 60  # 5 hours
 
 
-def _cache_key(label: str, token: str) -> str:
-    return f"v2:{label}:{token[:8]}"
+def _cache_key(label: str) -> str:
+    return f"v3:{label}"
 
 
 class LocationCreate(BaseModel):
@@ -69,26 +69,31 @@ def delete_news_location(location_id: int):
         if cur.rowcount == 0:
             raise HTTPException(404, "Location not found")
     if row:
-        settings = get_settings()
-        _news_cache.pop(_cache_key(row["label"], settings.news_api_token), None)
+        _news_cache.pop(_cache_key(row["label"]), None)
     return {"ok": True}
 
 
-async def _news_for_location(label: str, token: str, *, refresh: bool = False) -> list[dict]:
-    key = _cache_key(label, token)
+async def _news_for_location(
+    label: str,
+    tokens: list[str],
+    *,
+    refresh: bool = False,
+) -> tuple[list[dict], int | None]:
+    key = _cache_key(label)
     now = time.time()
     if not refresh and key in _news_cache:
         cached_at, articles = _news_cache[key]
         if now - cached_at < NEWS_CACHE_TTL:
-            return articles
-    articles = await fetch_news_for_location(label, token)
+            return articles, None
+    articles, token_index = await fetch_news_for_location(label, tokens)
     _news_cache[key] = (now, articles)
-    return articles
+    return articles, token_index
 
 
 @router.get("")
 async def get_all_news(refresh: bool = False):
     settings = get_settings()
+    tokens = settings.news_api_token_list
     if not settings.news_configured:
         rows = _get_locations()
         if not rows:
@@ -99,15 +104,25 @@ async def get_all_news(refresh: bool = False):
     results = []
     for row in rows:
         try:
-            articles = await _news_for_location(
-                row["label"], settings.news_api_token, refresh=refresh
+            articles, token_index = await _news_for_location(
+                row["label"], tokens, refresh=refresh
             )
-            cached_at = _news_cache.get(_cache_key(row["label"], settings.news_api_token), (0,))[0]
-            results.append({
+            cached_at = _news_cache.get(_cache_key(row["label"]), (0,))[0]
+            entry = {
                 "id": row["id"],
                 "label": row["label"],
                 "articles": articles,
                 "cached": not refresh and (time.time() - cached_at) < NEWS_CACHE_TTL,
+            }
+            if token_index is not None and token_index > 0:
+                entry["api_key_index"] = token_index + 1
+            results.append(entry)
+        except NewsRateLimitError as e:
+            results.append({
+                "id": row["id"],
+                "label": row["label"],
+                "error": f"All news API keys exhausted: {e}",
+                "articles": [],
             })
         except Exception as e:
             results.append({

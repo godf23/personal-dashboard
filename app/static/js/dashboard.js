@@ -159,6 +159,11 @@ function renderForecast(days, compact) {
   return `<div class="${cls}">${items}</div>`;
 }
 
+function isWeatherNewsArticle(a) {
+  const src = (a.source || "").toLowerCase();
+  return /weather\.com|accuweather|wunderground|weather\.gov|theweather\.com|weatherbug/.test(src);
+}
+
 function formatNewsArticle(a, expanded) {
   const source = a.source ? `<span class="news-source-badge">${escapeHtml(a.source)}</span>` : "";
   const cls = expanded ? "news-article" : "";
@@ -202,8 +207,9 @@ function renderWeatherTo(gridSel, items, expanded) {
     const wind = w.wind_mph != null
       ? `<span><img class="icon-ui" src="${iconUrl("ui", "wind")}" alt="" width="14" height="14">${w.wind_mph} mph</span>`
       : "";
-    const forecast = expanded ? renderForecast(w.forecast_7day, false) : "";
-    const tapHint = expanded ? "" : '<div class="weather-tap-hint">Click for full details</div>';
+    const forecast = expanded
+      ? renderForecast(w.forecast_7day, false)
+      : renderForecast((w.forecast_7day || []).slice(0, 4), true);
     const clickCls = " weather-card-clickable";
     const detailAttr = ` data-weather-id="${w.id}"`;
     return `<div class="weather-card ${mood}${clickCls}" data-id="${w.id}"${detailAttr}>
@@ -225,7 +231,6 @@ function renderWeatherTo(gridSel, items, expanded) {
           ${wind}
         </div>
         ${forecast}
-        ${tapHint}
         ${expanded ? `<div class="weather-footer">${w.active_sources}/${w.total_sources} sources${w.cached ? " (cached)" : ""}</div>` : ""}
       </div>
     </div>`;
@@ -253,7 +258,10 @@ function renderNewsTo(gridSel, feeds, expanded) {
         <p class="error-text">${escapeHtml(f.error)}</p>
       </div>`;
     }
-    const articles = (f.articles || []).map((a) => formatNewsArticle(a, expanded)).join("");
+    const articles = (f.articles || [])
+      .filter((a) => !isWeatherNewsArticle(a))
+      .map((a) => formatNewsArticle(a, expanded))
+      .join("");
     const listTag = expanded ? "div" : "ul";
     return `<div class="news-card" data-id="${f.id}">
       <button class="icon-btn card-remove" data-remove-news="${f.id}" type="button">

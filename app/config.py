@@ -23,6 +23,7 @@ class Settings(BaseSettings):
     owm_api_key: str = ""
     wapi_api_key: str = ""
     news_api_token: str = ""
+    news_api_tokens: str = ""
     github_repo: str = "godf23/personal-dashboard"
     github_branch: str = "main"
     proxmox_host: str = ""
@@ -37,6 +38,7 @@ class Settings(BaseSettings):
         "owm_api_key",
         "wapi_api_key",
         "news_api_token",
+        "news_api_tokens",
         "proxmox_host",
         "proxmox_node",
         "proxmox_token_id",
@@ -82,8 +84,21 @@ class Settings(BaseSettings):
         return token_ok or user_ok
 
     @property
+    def news_api_token_list(self) -> list[str]:
+        """Primary + backup The News API tokens (comma-separated in env)."""
+        tokens: list[str] = []
+        for raw in (self.news_api_token, self.news_api_tokens):
+            if not raw:
+                continue
+            for part in raw.split(","):
+                key = part.strip()
+                if key and key not in tokens:
+                    tokens.append(key)
+        return tokens
+
+    @property
     def news_configured(self) -> bool:
-        return bool(self.news_api_token)
+        return bool(self.news_api_token_list)
 
     @property
     def owm_configured(self) -> bool:

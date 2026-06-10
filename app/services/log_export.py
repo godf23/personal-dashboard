@@ -180,6 +180,7 @@ def _config_snapshot() -> str:
         "github_repo": settings.github_repo,
         "github_branch": settings.github_branch,
         "news_configured": settings.news_configured,
+        "news_api_key_count": len(settings.news_api_token_list),
         "owm_configured": settings.owm_configured,
         "wapi_configured": settings.wapi_configured,
         "ssl_cert": settings.ssl_cert,
