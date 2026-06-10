@@ -1,6 +1,7 @@
 .env
 .env.local
 data/
+*.log
 __pycache__/
 *.pyc
 .venv/

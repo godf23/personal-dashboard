@@ -7,6 +7,7 @@ Usage:
   python dash.py /version
   python dash.py /update
   python dash.py /restart
+  python dash.py /debug
   python dash.py run          # start the server
 """
 
@@ -27,6 +28,7 @@ COMMANDS = {
     "/version": "Show build version",
     "/update": "Pull latest code from GitHub",
     "/restart": "Restart the dashboard",
+    "/debug": "Live debug console (playit-style logs)",
     "run": "Start the dashboard server",
 }
 
@@ -41,6 +43,8 @@ def _normalize_cmd(raw: str) -> str:
         return "/update"
     if cmd in ("restart", "/restart"):
         return "/restart"
+    if cmd in ("debug", "/debug", "logs", "/logs"):
+        return "/debug"
     if cmd in ("run", "/run", "start", "/start"):
         return "run"
     return cmd
@@ -98,6 +102,12 @@ def cmd_restart():
     print(result.get("message", "Done."))
 
 
+def cmd_debug():
+    from app.services.debug_tui import run_debug_tui
+
+    run_debug_tui()
+
+
 def cmd_run():
     from start import run_server
 
@@ -122,6 +132,8 @@ def main():
         cmd_update()
     elif cmd == "/restart":
         cmd_restart()
+    elif cmd == "/debug":
+        cmd_debug()
     elif cmd == "run":
         cmd_run()
     else:

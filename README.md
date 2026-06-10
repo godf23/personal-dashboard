@@ -78,6 +78,7 @@ python scripts/push.py "describe your changes"
 .\dash.ps1 /version
 .\dash.ps1 /update
 .\dash.ps1 /restart
+.\dash.ps1 /debug
 .\dash.ps1 run
 ```
 
@@ -89,6 +90,7 @@ Or `python dash.py /update`, `python dash.py /restart`, etc.
 | `/version` | Show build 0.1 |
 | `/update` | Pull latest from GitHub |
 | `/restart` | Restart the running dashboard |
+| `/debug` | Live debug console (boxed logs, press q to quit) |
 | `run` | Start the server (`start.py` also works) |
 
 Version metadata lives in `app/version.py` — bump `__build__` when you ship.

@@ -9,6 +9,7 @@ from fastapi.templating import Jinja2Templates
 
 from app.config import ENV_EXAMPLE_PATH, ENV_PATH, reload_settings
 from app.database import init_db
+from app.services.debug_log import setup_file_logging
 from app.routes import links, news, settings, status, updates, weather
 from app.version import __build__, __version__
 
@@ -38,6 +39,7 @@ async def _watch_env():
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
+    setup_file_logging()
     init_db()
     reload_settings()
     task = asyncio.create_task(_watch_env())
