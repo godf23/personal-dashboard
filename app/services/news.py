@@ -151,6 +151,17 @@ def _is_weather_news(item: dict) -> bool:
     return False
 
 
+def _normalize_categories(item: dict) -> list[str]:
+    raw = item.get("categories")
+    if not raw:
+        return []
+    if isinstance(raw, list):
+        return [str(c).strip() for c in raw if str(c).strip()]
+    if isinstance(raw, str):
+        return [c.strip() for c in raw.split(",") if c.strip()]
+    return []
+
+
 def _normalize_article(item: dict) -> dict:
     return {
         "title": item.get("title", ""),
@@ -159,6 +170,7 @@ def _normalize_article(item: dict) -> dict:
         "published_at": item.get("published_at", ""),
         "description": item.get("description") or item.get("snippet") or "",
         "image_url": item.get("image_url") or "",
+        "categories": _normalize_categories(item),
     }
 
 
@@ -187,6 +199,7 @@ async def _fetch_with_token(
     limit: int,
     *,
     request_limit: int | None = None,
+    days: int = RECENT_DAYS,
 ) -> list[dict]:
     locale = _locale_for_label(label)
     fetch_limit = request_limit or min(max(limit * FETCH_MULTIPLIER, limit), 50)
@@ -195,7 +208,7 @@ async def _fetch_with_token(
         "limit": fetch_limit,
         "language": "en",
         "sort": "published_at",
-        "published_after": _published_after(),
+        "published_after": _published_after(days),
     }
     if locale:
         params["locale"] = locale
@@ -217,13 +230,15 @@ async def _fetch_with_token(
     _analyze_response(data, resp.status_code, raw)
 
     raw_articles = [_normalize_article(item) for item in data.get("data", [])]
-    return _filter_recent_articles(raw_articles, limit=limit)
+    return _filter_recent_articles(raw_articles, limit=limit, days=days)
 
 
 async def fetch_news_for_location(
     label: str,
     api_tokens: list[str],
     limit: int = DEFAULT_LIMIT,
+    *,
+    days: int = RECENT_DAYS,
 ) -> tuple[list[dict], int | None]:
     """Try each token in order; rotate on plan/key limit warnings from The News API."""
     if not api_tokens:
@@ -234,7 +249,7 @@ async def fetch_news_for_location(
 
     for index, token in enumerate(api_tokens):
         try:
-            articles = await _fetch_with_token(label, token, effective_limit)
+            articles = await _fetch_with_token(label, token, effective_limit, days=days)
             return articles, index
         except NewsPlanLimitError as exc:
             last_error = exc
@@ -246,6 +261,7 @@ async def fetch_news_for_location(
                     token,
                     effective_limit,
                     request_limit=effective_limit,
+                    days=days,
                 )
                 return articles, index
             except (NewsPlanLimitError, NewsRateLimitError):

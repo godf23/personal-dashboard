@@ -1,0 +1,11 @@
+12:25:17 [INFO] Dashboard started (build log active)
+12:26:08 [INFO] Dashboard started (build log active)
+12:26:40 [INFO] Dashboard started (build log active)
+12:28:14 [INFO] Dashboard started (build log active)
+13:00:45 [INFO] Dashboard started (build log active)
+13:00:45 [INFO] Application startup complete.
+13:00:45 [INFO] Uvicorn running on http://0.0.0.0:443 (Press CTRL+C to quit)
+13:00:48 [INFO] Shutting down
+13:00:48 [INFO] Waiting for application shutdown.
+13:00:48 [INFO] Application shutdown complete.
+13:00:48 [INFO] Finished server process [18968]

@@ -11,6 +11,7 @@ from app.config import ENV_EXAMPLE_PATH, ENV_PATH, reload_settings
 from app.database import init_db
 from app.services.debug_log import setup_file_logging
 from app.routes import links, news, settings, status, updates, weather
+from app.services.weather_scheduler import start_weather_scheduler
 from app.version import __build__, __version__
 
 BASE_DIR = Path(__file__).resolve().parent
@@ -42,13 +43,16 @@ async def lifespan(app: FastAPI):
     setup_file_logging()
     init_db()
     reload_settings()
-    task = asyncio.create_task(_watch_env())
+    env_task = asyncio.create_task(_watch_env())
+    weather_task = start_weather_scheduler()
     yield
-    task.cancel()
-    try:
-        await task
-    except asyncio.CancelledError:
-        pass
+    weather_task.cancel()
+    env_task.cancel()
+    for t in (weather_task, env_task):
+        try:
+            await t
+        except asyncio.CancelledError:
+            pass
 
 
 app = FastAPI(title="Personal Dashboard", lifespan=lifespan)

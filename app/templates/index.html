@@ -15,6 +15,14 @@
 
   <!-- Dashboard home -->
   <div class="dashboard view-panel" id="view-dashboard">
+    <section class="google-search" aria-label="Web search">
+      <form id="google-search-form" action="https://www.google.com/search" method="get" target="_blank">
+        <img class="icon-ui google-search-icon" src="/static/icons/ui/search.png" alt="" width="20" height="20">
+        <input id="google-search-input" name="q" type="search"
+               placeholder="Search Google..." autocomplete="off" enterkeyhint="search">
+        <button type="submit" class="google-search-btn" aria-label="Search">Search</button>
+      </form>
+    </section>
     <header class="top-bar">
       <button id="menu-btn" class="icon-btn" type="button" aria-label="Menu">
         <img class="icon-ui" src="/static/icons/ui/menu.png" alt="" width="24" height="24">
@@ -32,9 +40,16 @@
         <section class="widget news-widget" id="news-section">
           <div class="widget-header">
             <h2>News</h2>
-            <button class="icon-btn add-loc-btn" data-type="news" type="button" aria-label="Add news location">
-              <img class="icon-ui" src="/static/icons/ui/plus.png" alt="" width="20" height="20">
-            </button>
+            <div class="news-widget-tools">
+              <input id="news-search" class="news-search-input" type="search"
+                     placeholder="Search feed..." autocomplete="off" aria-label="Search news">
+              <button id="news-filters-btn" class="icon-btn" type="button" aria-label="News filters">
+                <img class="icon-ui" src="/static/icons/ui/menu.png" alt="" width="18" height="18">
+              </button>
+              <button class="icon-btn add-loc-btn" data-type="news" type="button" aria-label="Add news location">
+                <img class="icon-ui" src="/static/icons/ui/plus.png" alt="" width="20" height="20">
+              </button>
+            </div>
           </div>
           <div id="news-grid" class="news-grid"></div>
         </section>
@@ -47,6 +62,14 @@
           <img class="icon-ui" src="/static/icons/ui/plus.png" alt="" width="18" height="18">
           Add Link
         </button>
+        <button id="new-folder-btn" class="btn" type="button">New folder</button>
+        <input id="links-search" class="links-search" type="search" placeholder="Search links..." autocomplete="off">
+        <button id="links-import-btn" class="btn" type="button">Import</button>
+        <input id="links-import-file" type="file" accept=".json,.html,.htm" class="hidden" aria-hidden="true">
+        <div class="links-export-group">
+          <button id="links-export-json" class="btn" type="button">Export JSON</button>
+          <button id="links-export-html" class="btn" type="button">Export HTML</button>
+        </div>
         <label class="sort-label">
           Sort
           <select id="sort-select">
@@ -57,7 +80,7 @@
           </select>
         </label>
       </div>
-      <div id="links-grid" class="links-grid"></div>
+      <div id="links-grid" class="links-tree"></div>
     </section>
   </div>
 
@@ -85,7 +108,33 @@
         <img class="icon-ui" src="/static/icons/ui/plus.png" alt="" width="20" height="20">
       </button>
     </header>
-    <div id="news-full-grid" class="news-grid full-grid"></div>
+    <div class="news-full-toolbar">
+      <div class="news-tabs" role="tablist">
+        <button id="news-tab-feed" class="news-tab active" type="button" data-news-tab="feed">Feed</button>
+        <button id="news-tab-saved" class="news-tab" type="button" data-news-tab="saved">Saved</button>
+      </div>
+      <div class="news-full-tools">
+        <input id="news-search-full" class="news-search-input" type="search"
+               placeholder="Search..." autocomplete="off" aria-label="Search news">
+        <button id="news-filters-btn-full" class="btn" type="button">Filters</button>
+      </div>
+      <div class="news-age-chips" id="news-age-chips">
+        <button type="button" class="news-chip" data-age-mode="24h">24h</button>
+        <button type="button" class="news-chip" data-age-mode="7d">1 week</button>
+        <button type="button" class="news-chip" data-age-mode="30d">30d</button>
+      </div>
+    </div>
+    <div id="news-full-feed" class="news-full-panel">
+      <div id="news-full-grid" class="news-grid full-grid"></div>
+    </div>
+    <div id="news-full-saved" class="news-full-panel hidden">
+      <div class="saved-news-toolbar">
+        <input id="saved-search" class="news-search-input" type="search"
+               placeholder="Search saved..." autocomplete="off">
+        <div id="saved-tag-chips" class="saved-tag-chips"></div>
+      </div>
+      <div id="saved-news-list" class="saved-news-list"></div>
+    </div>
   </section>
 
   <section class="full-view view-panel hidden" id="view-links">
@@ -99,7 +148,13 @@
         Add Link
       </button>
     </header>
-    <div class="full-toolbar">
+    <div class="full-toolbar links-toolbar">
+      <button id="new-folder-full-btn" class="btn" type="button">New folder</button>
+      <input id="links-search-full" class="links-search" type="search" placeholder="Search links..." autocomplete="off">
+      <button id="links-import-full-btn" class="btn" type="button">Import</button>
+      <input id="links-import-file-full" type="file" accept=".json,.html,.htm" class="hidden" aria-hidden="true">
+      <button id="links-export-json-full" class="btn" type="button">Export JSON</button>
+      <button id="links-export-html-full" class="btn" type="button">Export HTML</button>
       <label class="sort-label">
         Sort
         <select id="sort-select-full">
@@ -110,7 +165,7 @@
         </select>
       </label>
     </div>
-    <div id="links-full-grid" class="links-grid full-grid"></div>
+    <div id="links-full-grid" class="links-tree full-grid"></div>
   </section>
 
   <div id="news-preview" class="news-preview hidden" aria-hidden="true"></div>
@@ -135,6 +190,10 @@
       <button class="nav-item" data-view="news" type="button">
         <img class="icon-ui" src="/static/icons/ui/news.png" alt="" width="18" height="18">
         News
+      </button>
+      <button class="nav-item" data-view="news" data-news-tab="saved" type="button">
+        <img class="icon-ui" src="/static/icons/ui/external-link.png" alt="" width="18" height="18">
+        Saved News
       </button>
       <button class="nav-item" data-view="links" type="button">
         <img class="icon-ui" src="/static/icons/ui/external-link.png" alt="" width="18" height="18">
@@ -178,9 +237,34 @@
       <h3>Add Link</h3>
       <label>Title <input name="title" required></label>
       <label>URL <input name="url" type="url" required placeholder="https://"></label>
+      <label>Description <input name="description" type="text" placeholder="Optional"></label>
       <div class="modal-actions">
         <button type="button" id="cancel-link" class="btn">Cancel</button>
         <button type="submit" class="btn primary">Save</button>
+      </div>
+    </form>
+  </dialog>
+
+  <dialog id="new-folder-modal">
+    <form id="new-folder-form" method="dialog">
+      <h3>New folder</h3>
+      <label>Folder name <input name="name" required placeholder="My folder"></label>
+      <div class="modal-actions">
+        <button type="button" id="cancel-folder" class="btn">Cancel</button>
+        <button type="submit" class="btn primary">Create</button>
+      </div>
+    </form>
+  </dialog>
+
+  <dialog id="folder-from-links-modal">
+    <form id="folder-from-links-form" method="dialog">
+      <h3>Create folder from links</h3>
+      <p class="muted-text">Drag one link onto another, or confirm a folder name here.</p>
+      <label>Folder name <input name="name" placeholder="New folder"></label>
+      <input type="hidden" name="link_ids" id="folder-from-links-ids">
+      <div class="modal-actions">
+        <button type="button" id="cancel-folder-from-links" class="btn">Cancel</button>
+        <button type="submit" class="btn primary">Create</button>
       </div>
     </form>
   </dialog>
@@ -193,6 +277,59 @@
       </button>
     </div>
     <div id="weather-detail-body" class="weather-detail-body"></div>
+  </dialog>
+
+  <dialog id="news-filters-modal" class="news-filters-panel">
+    <form id="news-filters-form" method="dialog">
+      <div class="news-filters-header">
+        <h3>News Filters</h3>
+        <button type="button" id="close-news-filters" class="icon-btn" aria-label="Close">
+          <img class="icon-ui" src="/static/icons/ui/close.png" alt="" width="18" height="18">
+        </button>
+      </div>
+      <section class="news-filters-section">
+        <h4>Age</h4>
+        <div class="news-age-options">
+          <label><input type="radio" name="news-age" value="24h"> 24 hours</label>
+          <label><input type="radio" name="news-age" value="7d" checked> 1 week</label>
+          <label><input type="radio" name="news-age" value="30d"> 30 days</label>
+          <label class="news-age-custom">
+            <input type="radio" name="news-age" value="custom"> Custom
+            <input id="news-age-days" type="number" min="1" max="90" value="7" class="news-age-days-input">
+            days
+          </label>
+        </div>
+      </section>
+      <section class="news-filters-section">
+        <h4>Keyword blacklist</h4>
+        <textarea id="news-blacklist-input" rows="4" placeholder="One keyword per line"></textarea>
+      </section>
+      <section class="news-filters-section">
+        <h4>Sources</h4>
+        <div id="news-source-toggles" class="news-toggle-list"></div>
+      </section>
+      <section class="news-filters-section">
+        <h4>Categories</h4>
+        <div id="news-category-toggles" class="news-toggle-list"></div>
+      </section>
+      <div class="modal-actions">
+        <button type="button" id="cancel-news-filters" class="btn">Cancel</button>
+        <button type="submit" class="btn primary">Apply</button>
+      </div>
+    </form>
+  </dialog>
+
+  <dialog id="news-save-modal">
+    <form id="news-save-form" method="dialog">
+      <h3>Save article</h3>
+      <p id="news-save-title" class="news-save-preview"></p>
+      <label>Tags <input name="tags" type="text" placeholder="comma-separated"></label>
+      <label>Notes <textarea name="notes" rows="3" placeholder="Optional notes"></textarea></label>
+      <div class="modal-actions">
+        <button type="button" id="cancel-news-save" class="btn">Cancel</button>
+        <button type="submit" class="btn primary">Save</button>
+      </div>
+    </form>
   </dialog>
 
   <dialog id="add-loc-modal">

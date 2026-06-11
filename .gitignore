@@ -1,11 +1,6 @@
-.env
-.env.local
-data/
-logs/
-*.log
+data/models/*.json
 __pycache__/
 *.pyc
-.venv/
-certs/*.pem
-*.db
-weather preditor.py
+.env
+logs/
+data/dashboard.db

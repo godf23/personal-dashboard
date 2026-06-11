@@ -9,6 +9,7 @@ Usage:
   python dash.py /restart
   python dash.py /debug
   python dash.py /logs
+  python dash.py /weather-stats
   python dash.py run          # start the server
 """
 
@@ -31,6 +32,7 @@ COMMANDS = {
     "/restart": "Restart the dashboard",
     "/debug": "Live debug console (playit-style logs)",
     "/logs": "Export logs to logs/<date-time>/ by category",
+    "/weather-stats": "Show weather pipeline stage and observation counts",
     "run": "Start the dashboard server",
 }
 
@@ -49,6 +51,8 @@ def _normalize_cmd(raw: str) -> str:
         return "/debug"
     if cmd in ("logs", "/logs", "export-logs", "/export-logs"):
         return "/logs"
+    if cmd in ("weather-stats", "/weather-stats", "weather", "/weather"):
+        return "/weather-stats"
     if cmd in ("run", "/run", "start", "/start"):
         return "run"
     return cmd
@@ -63,6 +67,7 @@ def cmd_help():
     print("  python dash.py /restart")
     print("  python dash.py /debug")
     print("  python dash.py /logs")
+    print("  python dash.py /weather-stats")
     print("  python dash.py run")
 
 
@@ -120,6 +125,31 @@ def cmd_logs():
     export_logs()
 
 
+def cmd_weather_stats():
+    from app.database import init_db
+    from app.services.weather_bias import load_bias_map
+    from app.services.weather_observations import all_pipeline_stats
+
+    init_db()
+    stats = all_pipeline_stats()
+    if not stats:
+        print("No weather locations configured.")
+        return
+    for s in stats:
+        print(f"\n{s.get('label') or s['location_id']} (id={s['location_id']})")
+        print(f"  Stage:           {s['pipeline_stage']}")
+        print(f"  Obs days/count:  {s['observation_days']} / {s['observation_count']}")
+        print(f"  Nearest station: {s.get('nearest_station') or '—'}")
+        nxt = s.get("days_until_upgrade")
+        print(f"  Next upgrade:    {nxt if nxt is not None else 'max stage'} day(s)")
+        bias = load_bias_map(s["location_id"])
+        if bias:
+            print("  Per-source bias (temp_f):")
+            for src, vars_ in sorted(bias.items()):
+                if "temp_f" in vars_:
+                    print(f"    {src}: {vars_['temp_f']:+.2f}°F")
+
+
 def cmd_run():
     from start import run_server
 
@@ -148,6 +178,8 @@ def main():
         cmd_debug()
     elif cmd == "/logs":
         cmd_logs()
+    elif cmd == "/weather-stats":
+        cmd_weather_stats()
     elif cmd == "run":
         cmd_run()
     else:

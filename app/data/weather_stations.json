@@ -1,0 +1,11 @@
+[
+  {"id": "KCASANDI657", "name": "Point Loma PWS", "lat": 32.67, "lon": -117.24, "type": "PWS", "fallback": "KSAN"},
+  {"id": "KSAN", "name": "San Diego Intl", "lat": 32.73, "lon": -117.19, "type": "METAR"},
+  {"id": "KNRT", "name": "Miramar MCAS", "lat": 32.87, "lon": -117.14, "type": "METAR"},
+  {"id": "RJTT", "name": "Tokyo Haneda", "lat": 35.55, "lon": 139.78, "type": "METAR"},
+  {"id": "RJAA", "name": "Tokyo Narita", "lat": 35.77, "lon": 140.39, "type": "METAR"},
+  {"id": "KORD", "name": "Chicago O'Hare", "lat": 41.98, "lon": -87.90, "type": "METAR"},
+  {"id": "KLAX", "name": "Los Angeles Intl", "lat": 33.94, "lon": -118.41, "type": "METAR"},
+  {"id": "KPSP", "name": "Palm Springs", "lat": 33.83, "lon": -116.51, "type": "METAR"},
+  {"id": "KPOC", "name": "Brackett Field", "lat": 34.09, "lon": -117.78, "type": "METAR"}
+]

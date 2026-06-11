@@ -9,7 +9,8 @@ from app.config import get_settings
 from app.database import _utcnow, get_db
 from app.services.geocoding import geocode_location
 from app.services.forecast import fetch_weather_bundle
-from app.services.quantum_weather import get_weather
+from app.services.weather_observations import all_pipeline_stats
+from app.services.weather_pipeline import get_weather
 
 router = APIRouter(prefix="/api/weather", tags=["weather"])
 
@@ -85,8 +86,15 @@ def delete_weather_location(location_id: int):
     return {"ok": True}
 
 
-def _fetch_weather_sync(lat: float, lon: float, owm: str, wapi: str) -> dict | None:
-    return get_weather(lat, lon, owm, wapi)
+def _fetch_weather_sync(
+    location_id: int, lat: float, lon: float, owm: str, wapi: str
+) -> dict | None:
+    return get_weather(location_id, lat, lon, owm, wapi)
+
+
+@router.get("/stats")
+def weather_pipeline_stats():
+    return all_pipeline_stats()
 
 
 @router.get("")
@@ -127,7 +135,14 @@ async def get_all_weather():
         loop = asyncio.get_event_loop()
         data = await loop.run_in_executor(
             None,
-            partial(_fetch_weather_sync, lat, lon, settings.owm_api_key, settings.wapi_api_key),
+            partial(
+                _fetch_weather_sync,
+                loc_id,
+                lat,
+                lon,
+                settings.owm_api_key,
+                settings.wapi_api_key,
+            ),
         )
         if not data:
             return {

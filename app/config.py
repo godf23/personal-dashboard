@@ -22,6 +22,8 @@ class Settings(BaseSettings):
     ssl_key: str = "certs/key.pem"
     owm_api_key: str = ""
     wapi_api_key: str = ""
+    pws_api_key: str = ""
+    observation_provider: str = ""
     news_api_token: str = ""
     news_api_tokens: str = ""
     github_repo: str = "godf23/personal-dashboard"
@@ -37,6 +39,8 @@ class Settings(BaseSettings):
     @field_validator(
         "owm_api_key",
         "wapi_api_key",
+        "pws_api_key",
+        "observation_provider",
         "news_api_token",
         "news_api_tokens",
         "proxmox_host",
