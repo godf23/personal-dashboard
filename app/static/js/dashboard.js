@@ -874,16 +874,16 @@ function openFolderFromLinksModal(linkIdA, linkIdB) {
 }
 
 async function importLinksFile(file) {
-  const ext = (file.name.split(".").pop() || "").toLowerCase();
-  const format = ext === "html" || ext === "htm" ? "html" : "json";
-  const fd = new FormData();
-  fd.append("file", file);
-  const res = await fetch(`/api/links/import?format=${format}`, { method: "POST", body: fd });
-  if (!res.ok) {
-    const err = await res.json().catch(() => ({}));
-    throw new Error(err.detail || res.statusText);
+  const name = (file.name || "").toLowerCase();
+  const format = name.endsWith(".html") || name.endsWith(".htm") ? "html" : "json";
+  const content = await file.text();
+  if (!content.trim()) {
+    throw new Error("File is empty");
   }
-  return res.json();
+  return api("/api/links/import/text", {
+    method: "POST",
+    body: JSON.stringify({ format, content }),
+  });
 }
 
 function downloadExport(format) {

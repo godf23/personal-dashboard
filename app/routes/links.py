@@ -1,3 +1,5 @@
+import json
+
 from fastapi import APIRouter, File, HTTPException, Query, UploadFile
 from fastapi.responses import Response
 from pydantic import BaseModel, Field
@@ -48,6 +50,52 @@ class FolderFromLinks(BaseModel):
     link_ids: list[int] = Field(..., min_length=2, max_length=2)
     name: str | None = None
     parent_id: int | None = None
+
+
+class ImportTextBody(BaseModel):
+    format: str = Field(..., pattern="^(json|html)$")
+    content: str
+
+
+def _existing_normalized_urls(conn) -> set[str]:
+    rows = conn.execute("SELECT url FROM links").fetchall()
+    return {normalize_url(r["url"]) for r in rows if r["url"]}
+
+
+def _run_import(text: str, import_format: str) -> dict:
+    if import_format == "html":
+        folders, links = parse_html(text)
+    else:
+        folders, links = parse_json(text)
+
+    with get_db() as conn:
+        existing = _existing_normalized_urls(conn)
+
+        def insert_folder(name, parent_id, sort_order):
+            cur = conn.execute(
+                "INSERT INTO link_folders (name, parent_id, sort_order, created_at) VALUES (?, ?, ?, ?)",
+                (name, parent_id, sort_order, _utcnow()),
+            )
+            return cur.lastrowid
+
+        def insert_link(title, url, description, folder_id, sort_order):
+            icon = favicon_url_for(url)
+            conn.execute(
+                """
+                INSERT INTO links (
+                    title, url, icon_url, description, folder_id, sort_order, created_at
+                ) VALUES (?, ?, ?, ?, ?, ?, ?)
+                """,
+                (title, url, icon, description or None, folder_id, sort_order, _utcnow()),
+            )
+
+        return import_payload(
+            folders,
+            links,
+            insert_folder=insert_folder,
+            insert_link=insert_link,
+            existing_urls=existing,
+        )
 
 
 def _row_to_link(row) -> dict:
@@ -173,9 +221,61 @@ def _build_tree(
     }
 
 
-def _existing_normalized_urls(conn) -> set[str]:
-    rows = conn.execute("SELECT url FROM links").fetchall()
-    return {normalize_url(r["url"]) for r in rows if r["url"]}
+@router.post("/import/text")
+def import_links_text(body: ImportTextBody):
+    """Import bookmarks from raw HTML or JSON (avoids multipart upload issues)."""
+    content = body.content.strip()
+    if not content:
+        raise HTTPException(400, "Import content is empty")
+    try:
+        return _run_import(content, body.format)
+    except json.JSONDecodeError as exc:
+        raise HTTPException(400, f"Invalid JSON: {exc}") from exc
+    except Exception as exc:
+        raise HTTPException(400, f"Import failed: {exc}") from exc
+
+
+@router.post("/import")
+async def import_links(
+    file: UploadFile = File(...),
+    import_format: str = Query("json", alias="format", pattern="^(json|html)$"),
+):
+    raw = await file.read()
+    try:
+        text = raw.decode("utf-8")
+    except UnicodeDecodeError:
+        text = raw.decode("latin-1", errors="replace")
+    try:
+        return _run_import(text, import_format)
+    except json.JSONDecodeError as exc:
+        raise HTTPException(400, f"Invalid JSON: {exc}") from exc
+    except Exception as exc:
+        raise HTTPException(400, f"Import failed: {exc}") from exc
+
+
+@router.get("/export")
+def export_links(export_format: str = Query("json", alias="format", pattern="^(json|html)$")):
+    with get_db() as conn:
+        folder_rows = conn.execute("SELECT * FROM link_folders").fetchall()
+        link_rows = conn.execute("SELECT * FROM links").fetchall()
+    folders = [_row_to_folder(r) for r in folder_rows]
+    links = [_row_to_link(r) for r in link_rows]
+
+    if export_format == "html":
+        content = export_html(folders, links)
+        return Response(
+            content=content,
+            media_type="text/html",
+            headers={"Content-Disposition": 'attachment; filename="bookmarks.html"'},
+        )
+
+    payload = export_json(folders, links)
+    body = json_dumps(payload)
+    return Response(
+        content=body,
+        media_type="application/json",
+        headers={"Content-Disposition": 'attachment; filename="bookmarks.json"'},
+    )
 
 
 @router.get("/tree")
@@ -416,79 +516,5 @@ def click_link(link_id: int):
     return {"url": row["url"]}
 
 
-@router.post("/import")
-async def import_links(
-    file: UploadFile = File(...),
-    format: str = Query("json", pattern="^(json|html)$"),
-):
-    raw = await file.read()
-    try:
-        text = raw.decode("utf-8")
-    except UnicodeDecodeError:
-        text = raw.decode("latin-1", errors="replace")
-
-    if format == "html":
-        folders, links = parse_html(text)
-    else:
-        folders, links = parse_json(text)
-
-    with get_db() as conn:
-        existing = _existing_normalized_urls(conn)
-
-        def insert_folder(name, parent_id, sort_order):
-            cur = conn.execute(
-                "INSERT INTO link_folders (name, parent_id, sort_order, created_at) VALUES (?, ?, ?, ?)",
-                (name, parent_id, sort_order, _utcnow()),
-            )
-            return cur.lastrowid
-
-        def insert_link(title, url, description, folder_id, sort_order):
-            icon = favicon_url_for(url)
-            conn.execute(
-                """
-                INSERT INTO links (
-                    title, url, icon_url, description, folder_id, sort_order, created_at
-                ) VALUES (?, ?, ?, ?, ?, ?, ?)
-                """,
-                (title, url, icon, description or None, folder_id, sort_order, _utcnow()),
-            )
-
-        result = import_payload(
-            folders,
-            links,
-            insert_folder=insert_folder,
-            insert_link=insert_link,
-            existing_urls=existing,
-        )
-    return result
-
-
-@router.get("/export")
-def export_links(format: str = Query("json", pattern="^(json|html)$")):
-    with get_db() as conn:
-        folder_rows = conn.execute("SELECT * FROM link_folders").fetchall()
-        link_rows = conn.execute("SELECT * FROM links").fetchall()
-    folders = [_row_to_folder(r) for r in folder_rows]
-    links = [_row_to_link(r) for r in link_rows]
-
-    if format == "html":
-        content = export_html(folders, links)
-        return Response(
-            content=content,
-            media_type="text/html",
-            headers={"Content-Disposition": 'attachment; filename="bookmarks.html"'},
-        )
-
-    payload = export_json(folders, links)
-    body = json_dumps(payload)
-    return Response(
-        content=body,
-        media_type="application/json",
-        headers={"Content-Disposition": 'attachment; filename="bookmarks.json"'},
-    )
-
-
 def json_dumps(payload: dict) -> bytes:
-    import json
-
     return json.dumps(payload, indent=2).encode("utf-8")

@@ -127,15 +127,17 @@ class _NetscapeParser(HTMLParser):
         self._a_parts: list[str] = []
 
     def handle_starttag(self, tag, attrs):
-        attrs_d = {k.lower(): v for k, v in attrs}
+        attrs_d = {k.lower(): (v or "") for k, v in attrs}
         t = tag.lower()
         if t == "h3":
             self._in_h3 = True
             self._h3_parts = []
-        elif t == "a" and "href" in attrs_d:
-            self._in_a = True
-            self._a_href = attrs_d["href"]
-            self._a_parts = []
+        elif t == "a":
+            href = attrs_d.get("href", "").strip()
+            if href:
+                self._in_a = True
+                self._a_href = href
+                self._a_parts = []
 
     def handle_endtag(self, tag):
         t = tag.lower()
@@ -153,13 +155,15 @@ class _NetscapeParser(HTMLParser):
                 self.folder_stack.pop()
         elif t == "a" and self._in_a:
             title = "".join(self._a_parts).strip() or self._a_href
-            self.links.append(
-                {
-                    "title": title.strip(),
-                    "url": self._a_href.strip(),
-                    "folder_index": self.folder_stack[-1],
-                }
-            )
+            href = self._a_href.strip()
+            if href and not href.lower().startswith(("javascript:", "place:", "about:", "chrome:")):
+                self.links.append(
+                    {
+                        "title": title.strip(),
+                        "url": href,
+                        "folder_index": self.folder_stack[-1],
+                    }
+                )
             self._in_a = False
 
     def handle_data(self, data):
@@ -260,6 +264,9 @@ def import_payload(
     for link in links:
         url = normalize_url(link.get("url", ""))
         if not url or url in existing_urls:
+            skipped += 1
+            continue
+        if not url.startswith(("http://", "https://")):
             skipped += 1
             continue
         folder_idx = link.get("folder_index")
