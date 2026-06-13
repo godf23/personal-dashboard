@@ -1,7 +1,7 @@
 """Dashboard release metadata — auto-bumped by scripts/push.py."""
 
-__version__ = "0.1.6"
-__build__ = "0.1.6"
+__version__ = "0.1.7"
+__build__ = "0.1.7"
 __name__ = "Personal Dashboard"
 
 
