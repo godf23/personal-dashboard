@@ -1,4 +1,4 @@
-# Push dashboard changes to GitHub
+# Push dashboard source to GitHub (runtime data/logs/.env are not committed).
 # Usage: .\push.ps1 "your commit message"
 #        .\push.ps1
 

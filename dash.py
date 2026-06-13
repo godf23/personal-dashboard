@@ -6,11 +6,14 @@ Usage:
   python dash.py /help
   python dash.py /version
   python dash.py /update
+  python dash.py /start
   python dash.py /restart
+  python dash.py /status
+  python dash.py /enable-autostart
   python dash.py /debug
   python dash.py /logs
   python dash.py /weather-stats
-  python dash.py run          # start the server
+  python dash.py run          # start the server (foreground)
 """
 
 from __future__ import annotations
@@ -21,7 +24,13 @@ import os
 import sys
 
 from app.config import BASE_DIR, get_settings
-from app.services.restart import restart_dashboard
+from app.services.restart import (
+    dashboard_status,
+    disable_autostart,
+    enable_autostart,
+    restart_dashboard,
+    start_dashboard,
+)
 from app.services.updater import apply_update_sync, check_for_update, get_local_short_commit
 from app.version import __build__, __version__
 
@@ -29,7 +38,11 @@ COMMANDS = {
     "/help": "Show this help",
     "/version": "Show build version",
     "/update": "Pull latest code from GitHub",
+    "/start": "Start the dashboard in the background",
     "/restart": "Restart the dashboard",
+    "/status": "Show whether the dashboard is running",
+    "/enable-autostart": "Start dashboard automatically on boot / login",
+    "/disable-autostart": "Turn off automatic startup",
     "/debug": "Live debug console (playit-style logs)",
     "/logs": "Export logs to logs/<date-time>/ by category",
     "/weather-stats": "Show weather pipeline stage and observation counts",
@@ -45,15 +58,30 @@ def _normalize_cmd(raw: str) -> str:
         return "/version"
     if cmd in ("update", "/update"):
         return "/update"
+    if cmd in ("start", "/start"):
+        return "/start"
     if cmd in ("restart", "/restart"):
         return "/restart"
+    if cmd in ("status", "/status"):
+        return "/status"
+    if cmd in (
+        "enable-autostart",
+        "/enable-autostart",
+        "autostart",
+        "/autostart",
+        "enable",
+        "/enable",
+    ):
+        return "/enable-autostart"
+    if cmd in ("disable-autostart", "/disable-autostart", "disable", "/disable"):
+        return "/disable-autostart"
     if cmd in ("debug", "/debug"):
         return "/debug"
     if cmd in ("logs", "/logs", "export-logs", "/export-logs"):
         return "/logs"
     if cmd in ("weather-stats", "/weather-stats", "weather", "/weather"):
         return "/weather-stats"
-    if cmd in ("run", "/run", "start", "/start"):
+    if cmd in ("run", "/run"):
         return "run"
     return cmd
 
@@ -63,6 +91,8 @@ def cmd_help():
     for name, desc in COMMANDS.items():
         print(f"  {name:<12} {desc}")
     print("\nExamples:")
+    print("  python dash.py /start")
+    print("  python dash.py /enable-autostart")
     print("  python dash.py /update")
     print("  python dash.py /restart")
     print("  python dash.py /debug")
@@ -101,7 +131,55 @@ def cmd_update():
     if result.get("restarted"):
         print("Service restarted.")
     else:
-        print("Run: python dash.py /restart")
+        print("Run: python dash.py /start  (or /restart if already running)")
+
+
+def cmd_start():
+    print("Starting dashboard...")
+    result = start_dashboard()
+    if not result.get("ok"):
+        print(result.get("error", "Start failed"), file=sys.stderr)
+        sys.exit(1)
+    print(result.get("message", "Done."))
+
+
+def cmd_status():
+    status = dashboard_status()
+    if status["running"]:
+        pid = status.get("pid")
+        detail = f" (pid {pid})" if pid else ""
+        print(f"Dashboard is running{detail}.")
+    else:
+        print("Dashboard is not running.")
+        print("Start it with: python dash.py /start")
+
+    if status.get("systemd"):
+        print("systemd: personal-dashboard is "
+              f"{'active' if status.get('systemd_active') else 'inactive'}, "
+              f"autostart {'enabled' if status.get('systemd_enabled') else 'disabled'}.")
+    elif status.get("windows_task"):
+        print("Windows autostart task (PersonalDashboard) is registered.")
+    else:
+        print("Autostart is not configured.")
+        print("Enable with: python dash.py /enable-autostart")
+
+
+def cmd_enable_autostart():
+    print("Enabling autostart...")
+    result = enable_autostart()
+    if not result.get("ok"):
+        print(result.get("error", "Failed"), file=sys.stderr)
+        sys.exit(1)
+    print(result.get("message", "Done."))
+
+
+def cmd_disable_autostart():
+    print("Disabling autostart...")
+    result = disable_autostart()
+    if not result.get("ok"):
+        print(result.get("error", "Failed"), file=sys.stderr)
+        sys.exit(1)
+    print(result.get("message", "Done."))
 
 
 def cmd_restart():
@@ -172,6 +250,14 @@ def main():
         cmd_version()
     elif cmd == "/update":
         cmd_update()
+    elif cmd == "/start":
+        cmd_start()
+    elif cmd == "/status":
+        cmd_status()
+    elif cmd == "/enable-autostart":
+        cmd_enable_autostart()
+    elif cmd == "/disable-autostart":
+        cmd_disable_autostart()
     elif cmd == "/restart":
         cmd_restart()
     elif cmd == "/debug":
